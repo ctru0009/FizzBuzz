@@ -16,7 +16,7 @@ A modern web application for playing the classic FizzBuzz game with customizable
 - Frontend: Next.js with TypeScript
 - Backend: ASP.NET Core
 - Real-time Communication: SignalR
-- Database: SQL Server
+- Database: Posgresql
 - Styling: Tailwind CSS
 
 ## Getting Started
@@ -24,9 +24,9 @@ A modern web application for playing the classic FizzBuzz game with customizable
 ### Prerequisites
 
 - Node.js (v18 or later)
-- .NET 7.0 SDK
-- SQL Server
-- Docker (optional)
+- .NET 8.0 SDK
+- Postgresql
+- Docker
 
 ### Running the Application
 
