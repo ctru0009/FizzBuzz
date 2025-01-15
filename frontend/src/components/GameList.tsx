@@ -3,7 +3,7 @@ import React, { useEffect, useState } from "react";
 import GameCard from "./GameCard";
 import Game from "@/types/Game";
 import { BACKEND_URL } from "@/const";
-import { redirect, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 
 type SortOption = "name" | "createdAt";
 
