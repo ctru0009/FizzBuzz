@@ -1,34 +1,37 @@
 "use client";
 import { useRouter } from "next/navigation";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { BACKEND_URL } from "@/const";
 import GameRule from "@/types/GameRule";
 
 const CreateGamePage = () => {
+  
   const router = useRouter();
   const [name, setName] = useState("");
   const [authorName, setAuthorName] = useState("");
   const [startRange, setStartRange] = useState(1);
   const [endRange, setEndRange] = useState(101);
   const [error, setError] = useState("");
+  const [playerId, setPlayerId] = useState<string | null>(null);
   const [rules, setRules] = useState<GameRule[]>([
     { divisibleBy: 3, replacementWord: "Fizz" },
     { divisibleBy: 5, replacementWord: "Buzz" },
   ]);
-  const player = localStorage.getItem("player");
-  const playerId = player ? JSON.parse(player).id : null;
+
+  useEffect(() => {
+    const player = localStorage.getItem("player");
+    if (player) {
+      const parsed = JSON.parse(player);
+      setPlayerId(parsed.id);
+    }
+  }, []);
 
   const addRule = () => {
     setRules([...rules, { divisibleBy: 0, replacementWord: "" }]);
   };
 
-  const removeRule = (index: number) => {
-    if (rules.length <= 2) {
-      setError("Minimum 2 rules required");
-      return;
-    }
+  const deleteRule = (index: number) => {
     setRules(rules.filter((_, i) => i !== index));
-    setError("");
   };
 
   const updateRule = (
@@ -44,48 +47,47 @@ const CreateGamePage = () => {
     setRules(newRules);
   };
 
-  const validateForm = (): boolean => {
-    if (rules.length < 2) {
-      setError("Minimum 2 rules required");
-      return false;
-    }
-    if (startRange < 1) {
-      setError("Start range must be greater than 1");
-      return false;
-    }
-    if (endRange - startRange < 100) {
-      setError("Range must be at least 100 numbers");
-      return false;
-    }
-    setError("");
-    return true;
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!validateForm()) return;
+
+    if (!name || !authorName) {
+      setError("Name and Author Name are required");
+      return;
+    }
+
+    if (startRange >= endRange) {
+      setError("End range must be greater than start range");
+      return;
+    }
+
+    if (rules.some((rule) => rule.divisibleBy <= 0 || !rule.replacementWord)) {
+      setError("All rules must have valid numbers and replacement words");
+      return;
+    }
 
     try {
       const response = await fetch(`${BACKEND_URL}/games`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({
           name,
-          playerId: playerId,
           authorName,
-          rules,
           startRange,
           endRange,
+          rules,
+          playerId,
         }),
       });
 
-      if (response.ok) {
-        router.push("/games");
-      } else {
-        setError("Failed to create game");
+      if (!response.ok) {
+        throw new Error("Failed to create game");
       }
-    } catch (error) {
-      setError("Error creating game");
+
+      router.push("/games");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "An error occurred");
     }
   };
 
@@ -96,7 +98,7 @@ const CreateGamePage = () => {
 
         {error && (
           <div className="mb-4 p-2 bg-red-100 border border-red-400 text-red-700 rounded">
-            {error}
+            Error: {error}
           </div>
         )}
 
@@ -191,7 +193,7 @@ const CreateGamePage = () => {
                 {rules.length > 2 && (
                   <button
                     type="button"
-                    onClick={() => removeRule(index)}
+                    onClick={() => deleteRule(index)}
                     className="text-red-500 hover:text-red-700"
                   >
                     ✕
