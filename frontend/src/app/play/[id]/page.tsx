@@ -1,7 +1,7 @@
 "use client";
 import { BACKEND_URL, SIGNALR_URL } from "@/const";
 import SessionResponse from "@/types/Session";
-import { redirect, useParams, useRouter } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import * as signalR from "@microsoft/signalr";
 import React, { useEffect, useState } from "react";
 import GameAnswerResponse from "@/types/GameAnswerResponse";
