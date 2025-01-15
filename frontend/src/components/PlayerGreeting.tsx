@@ -1,11 +1,9 @@
 "use client";
 import { useRouter } from "next/navigation";
-import React, { useState, useEffect } from "react";
-import Player from "@/types/Player";
+import React, { useState } from "react";
 import { BACKEND_URL } from "@/const";
 const PlayerGreeting = () => {
   const [name, setName] = useState("");
-  const [player, setPlayer] = useState<Player | null>(null);
   const router = useRouter();
 
   const handleSubmit = async (event: React.FormEvent) => {
@@ -22,7 +20,6 @@ const PlayerGreeting = () => {
       body: JSON.stringify({ name: name }),
     });
     const data = await response.json();
-    setPlayer(data);
     localStorage.setItem("playerName", name);
     localStorage.setItem("player", JSON.stringify(data));
     router.push("/games");
