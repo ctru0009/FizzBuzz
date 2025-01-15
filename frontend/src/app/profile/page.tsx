@@ -1,6 +1,6 @@
 'use client';
 import isAuth from '@/components/IsAuth';
-import React, { useLayoutEffect } from 'react'
+import React from 'react'
 
 const page = () => {
   return (
