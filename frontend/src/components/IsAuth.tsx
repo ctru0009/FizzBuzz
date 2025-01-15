@@ -1,23 +1,28 @@
 'use client';
 
-import { useEffect } from "react";
-import { redirect, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { ComponentType, FC } from "react";
 
-export default function isAuth(Component: any) {
-  const isAuthenticated = () => {
-    const playerName = localStorage.getItem("playerName");
-    return playerName ? true : false;
-  };
-  const auth = isAuthenticated();
+export default function isAuth<P extends object>(Component: ComponentType<P>): FC<P> {
+  return function IsAuth(props: P) {
+    const router = useRouter();
+    const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null);
 
-  return function IsAuth(props: any) {
     useEffect(() => {
-      if (!auth) {
-        return redirect("/");
+      const playerName = localStorage.getItem("playerName");
+      setIsAuthorized(!!playerName);
+      
+      if (!playerName) {
+        router.push('/');
       }
-    }, []);
+    }, [router]);
 
-    if (!auth) {
+    if (isAuthorized === null) {
+      return null; // Initial loading state
+    }
+
+    if (!isAuthorized) {
       return null;
     }
 
