@@ -1,8 +1,7 @@
 "use client";
 import { BACKEND_URL } from "@/const";
 import Game from "@/types/Game";
-import GameRule from "@/types/GameRule";
-import { redirect, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import React, { useState } from "react";
 
 interface GameModalProps {
@@ -13,8 +12,8 @@ interface GameModalProps {
 
 const GameModal: React.FC<GameModalProps> = ({ isOpen, onClose, game }) => {
   const [duration, setDuration] = useState(60);
-  if (!isOpen) return null;
   const router = useRouter();
+  if (!isOpen) return null;
   const onPlay = () => {
     onClose();
     const gameId = game.id;
@@ -41,7 +40,6 @@ const GameModal: React.FC<GameModalProps> = ({ isOpen, onClose, game }) => {
       .then((data) => {
         router.push(`/play/${data.id}`);
       });
-    
   };
 
   return (
