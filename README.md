@@ -5,7 +5,7 @@ A modern web application for playing the classic FizzBuzz game with customizable
 ## Features
 
 - 🎮 Create custom FizzBuzz games with configurable rules
-- 👥 Multiplayer support with real-time updates
+- 👥 Real-time game session updates
 - 📊 Track game sessions and view results
 - 🏆 Score tracking and game result after play
 - 🔒 Simple authentication and session management
@@ -35,15 +35,11 @@ A modern web application for playing the classic FizzBuzz game with customizable
 git clone https://github.com/ctru0009/FizzBuzz
 cd FizzBuzz
 ```
-
-2. Start the frontend:
+2. Run app with docker
 ```bash
-cd frontend
-npm install
-npm run dev
+docker-compose up --build
 ```
-
-3. Run backend
-```bash
-docker-compose up
+3. Open URL and enjoy!
+```
+localhost:3000
 ```
