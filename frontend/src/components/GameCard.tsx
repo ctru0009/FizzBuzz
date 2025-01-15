@@ -1,7 +1,6 @@
 "use client";
 import React, { useState } from "react";
 import GameModal from "./GameModal";
-import GameRule from "@/types/GameRule";
 import Game from "@/types/Game";
 
 interface GameCardProps {
