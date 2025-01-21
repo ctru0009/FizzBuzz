@@ -139,9 +139,9 @@ namespace backend.Services
                 var isCorrect = false;
                 var answer = "";
 
-                _logger.LogInformation("Number: " + gameAnswerSubmit.Number);
-                _logger.LogInformation("rules: " + rules.Count.ToString());
-                _logger.LogInformation("gameId: " + gameAnswerSubmit.GameId.ToString());
+                //_logger.LogInformation("Number: " + gameAnswerSubmit.Number);
+                //_logger.LogInformation("rules: " + rules.Count.ToString());
+                //_logger.LogInformation("gameId: " + gameAnswerSubmit.GameId.ToString());
 
 
                 // Generate the answer string
