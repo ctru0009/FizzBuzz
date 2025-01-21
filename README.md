@@ -19,6 +19,21 @@ A modern web application for playing the classic FizzBuzz game with customizable
 - Database: Posgresql
 - Styling: Tailwind CSS
 
+## Screenshot
+
+Login Page
+![FizzBuzz Login Screenshot](./public/images/fizzbuzz_login_screenshot.png)
+Game List 
+![FizzBuzz Games List Screenshot](./public/images/fizzbuzz_games_list_screenshot.png)
+Create Game
+![FizzBuzz Create Game Screenshot](./public/images/fizzbuzz_create_game_screenshot.png)
+Rules Pop Up
+![FizzBuzz Rules Pop Up Screenshot](./public/images/fizzbuzz_rules_pop_up_screenshot.png)
+Gameplay
+![FizzBuzz Game Page Screenshot](./public/images/fizzbuzz_game_page_screenshot.png)
+Result
+![FizzBuzz Result Screenshot](./public/images/fizzbuzz_result_screenshot.png)
+
 ## Getting Started
 
 ### Prerequisites
