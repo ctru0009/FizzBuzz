@@ -2,7 +2,9 @@
 using backend.Data;
 using backend.Hubs;
 using backend.Interfaces;
+using backend.Interfaces.Cache;
 using backend.Services;
+using backend.Services.Cache;
 using Microsoft.EntityFrameworkCore;
 
 namespace backend
@@ -49,11 +51,17 @@ namespace backend
                 options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"));
             });
 
+            // Add Redis
+            builder.Services.AddStackExchangeRedisCache(redisoptions =>
+            {
+                redisoptions.Configuration = builder.Configuration.GetConnectionString("Redis");
+                redisoptions.InstanceName = "GeneratedNumbers_";
+            });
             // Add services
             builder.Services.AddTransient<IPlayer, PlayerService>();
             builder.Services.AddTransient<IGame, GameService>();
             builder.Services.AddTransient<Interfaces.ISession, SessionService>();
-
+            builder.Services.AddScoped<IRedisCachingService, RedisCachingService>();
             var app = builder.Build();
 
             // Configure the HTTP request pipeline.
@@ -74,9 +82,9 @@ namespace backend
             // Apply migrations automatically at startup
             using (var scope = app.Services.CreateScope())
             {
-                var dbContext = scope.ServiceProvider.GetRequiredService<BackendAppDbContext>();
-                dbContext.Database.Migrate(); // Apply migrations if needed
-            }
+               var dbContext = scope.ServiceProvider.GetRequiredService<BackendAppDbContext>();
+               dbContext.Database.Migrate(); // Apply migrations if needed
+            };
             app.MapControllers();
 
             app.Run();
