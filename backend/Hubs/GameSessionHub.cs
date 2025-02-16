@@ -1,19 +1,22 @@
 ﻿using backend.DTOs;
 using backend.Interfaces;
+using backend.Interfaces.Cache;
 using Microsoft.AspNetCore.SignalR;
 using Newtonsoft.Json;
-using System.Collections.Concurrent;
 namespace backend.Hubs
 {
     public class GameSessionHub : Hub
     {
         private readonly IGame _gameService;
         private readonly ILogger<GameSessionHub> _logger;
-        private static readonly ConcurrentDictionary<string, List<int>> UserGeneratedNumbers = new();
-        public GameSessionHub(IGame gameService, ILogger<GameSessionHub> logger)
+        private readonly IRedisCachingService _redis;
+        //private static readonly ConcurrentDictionary<string, List<int>> UserGeneratedNumbers = new();
+
+        public GameSessionHub(IGame gameService, ILogger<GameSessionHub> logger, IRedisCachingService redis)
         {
             _gameService = gameService;
             _logger = logger;
+            _redis = redis;
         }
 
 
@@ -28,7 +31,8 @@ namespace backend.Hubs
                 var sessionId = gameAnswerSubmit.SessionId.ToString();
 
                 // Create a list of numbers for the user
-                UserGeneratedNumbers.TryAdd(Context.ConnectionId, new List<int>());
+                //UserGeneratedNumbers.TryAdd(Context.ConnectionId, new List<int>());
+                _redis.SetData(Context.ConnectionId, new List<int>());
 
 
                 // Add the user to the group
@@ -37,11 +41,12 @@ namespace backend.Hubs
 
                 // Generate the first number
                 int firstNumber = _gameService.GenerateRandomNumber(int.Parse(sessionId),
-                                                                    UserGeneratedNumbers[Context.ConnectionId].ToArray(),
+                                                                    [],
                                                                     gameAnswerSubmit.StartRange,
                                                                     gameAnswerSubmit.EndRange);
-                UserGeneratedNumbers[Context.ConnectionId].Add(firstNumber);
-                //_logger.LogInformation("This is first number: " + firstNumber.ToString());
+                //UserGeneratedNumbers[Context.ConnectionId].Add(firstNumber);
+                _redis.RPushData(Context.ConnectionId, firstNumber);
+                _logger.LogInformation("This is first number: " + firstNumber.ToString());
 
                 // Send the first number to the user
                 await Clients.Caller.SendAsync("ReceiveGameUpdate", new GameAnswerResponse { IsCorrect = false, NextNumber = firstNumber, Score = 0 });
@@ -62,21 +67,30 @@ namespace backend.Hubs
                     throw new ArgumentNullException(nameof(gameAnswerSubmit), "GameAnswerSubmit cannot be null.");
                 }
 
-                UserGeneratedNumbers.TryAdd(Context.ConnectionId, new List<int>());
+                //UserGeneratedNumbers.TryAdd(Context.ConnectionId, new List<int>());
+                var isExist = _redis.IsExist(Context.ConnectionId);
+
+                if (!isExist)
+                {
+                    _redis.SetData(Context.ConnectionId, new List<int>());
+                }
 
                 var isCorrect = await _gameService.ValidateAnswer(gameAnswerSubmit);
+                var generatedNumbers = _redis.GetData(Context.ConnectionId).ToArray()!;
+                _logger.LogInformation($"Generated numbers: {String.Join(", ", generatedNumbers)}");
 
                 // Generate the next number that has not been used
                 int nextNumber = _gameService.GenerateRandomNumber(
                                                                     gameAnswerSubmit.SessionId,
-                                                                    UserGeneratedNumbers[Context.ConnectionId].ToArray(),
+                                                                    generatedNumbers,
                                                                     gameAnswerSubmit.StartRange,
                                                                     gameAnswerSubmit.EndRange
                                                                 );
 
 
                 // Add the number to the list of used numbers
-                UserGeneratedNumbers[Context.ConnectionId].Add(nextNumber);
+                //UserGeneratedNumbers[Context.ConnectionId].Add(nextNumber);
+                _redis.RPushData(Context.ConnectionId, nextNumber);
 
                 var result = new GameAnswerResponse
                 {
@@ -97,10 +111,10 @@ namespace backend.Hubs
         }
         public override async Task OnDisconnectedAsync(Exception? exception)
         {
-            if (UserGeneratedNumbers.ContainsKey(Context.ConnectionId))
-            {
-                UserGeneratedNumbers.TryRemove(Context.ConnectionId, out _);
-            }
+            //if (UserGeneratedNumbers.ContainsKey(Context.ConnectionId))
+            //{
+            //    UserGeneratedNumbers.TryRemove(Context.ConnectionId, out _);
+            //}
             _logger.LogInformation($"Connection {Context.ConnectionId} disconnected.");
             await base.OnDisconnectedAsync(exception);
         }
