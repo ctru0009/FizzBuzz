@@ -22,6 +22,12 @@ services:
       ConnectionStrings__DefaultConnection: "Host=db;Port=5432;Database=fizzbuzz;Username=postgres;Password=password"
     depends_on:
       - db
+      - redis_db
+
+  redis_db:
+    image: redis:latest
+    ports:
+      - "6379:6379"
 
   db:
     image: postgres:17
