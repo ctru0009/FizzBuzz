@@ -1,6 +1,6 @@
 # FizzBuzz Game
 
-A modern web application for playing the classic FizzBuzz game with customizable rules and multiplayer support.
+A modern web application for playing the classic FizzBuzz game with customizable rules.
 
 ## Features
 
@@ -16,7 +16,7 @@ A modern web application for playing the classic FizzBuzz game with customizable
 - Frontend: Next.js with TypeScript
 - Backend: ASP.NET Core
 - Real-time Communication: SignalR
-- Database: Posgresql
+- Database: Posgresql, Redis
 - Styling: Tailwind CSS
 
 ## Screenshot
