@@ -1,5 +1,7 @@
-﻿using backend.DTOs;
+using backend.Auth;
+using backend.DTOs;
 using backend.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 // For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
@@ -19,33 +21,35 @@ namespace backend.Controllers
 
         // POST api/games
         [HttpPost]
-        public async Task<IActionResult> Post([FromBody] GameRequestDTO gameDTO)
+        [Authorize]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Post([FromBody] GameRequestDTO gameDTO, CancellationToken cancellationToken)
         {
+            var playerId = User.GetPlayerId();
+            var authorName = User.GetPlayerName();
+            if (playerId is null || authorName is null)
+            {
+                return Unauthorized(new { error = "Missing player identity." });
+            }
+
             try
             {
-                var game = await _gameService.CreateGame(gameDTO);
-                return Ok(game);
+                var game = await _gameService.CreateGameAsync(gameDTO, playerId.Value, authorName, cancellationToken);
+                return Created($"/api/games/{game.Id}", game);
             }
-            catch (Exception e)
+            catch (KeyNotFoundException e)
             {
-                return BadRequest(e.Message);
+                return NotFound(new { error = e.Message });
             }
         }
 
         // GET api/games
         [HttpGet]
-        public async Task<IActionResult> Get()
+        [AllowAnonymous]
+        public async Task<IActionResult> Get(CancellationToken cancellationToken)
         {
-            try
-            {
-                var games = await _gameService.GetGames();
-                return Ok(games);
-            }
-            catch (Exception e)
-            {
-                return BadRequest(e.Message);
-            }
+            var games = await _gameService.GetGamesAsync(cancellationToken);
+            return Ok(games);
         }
-
     }
 }

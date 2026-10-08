@@ -1,53 +1,42 @@
-﻿using backend.Interfaces.Cache;
+using backend.Interfaces.Cache;
 using Microsoft.Extensions.Caching.Distributed;
 using System.Text.Json;
 
 namespace backend.Services.Cache
 {
-    public class RedisCachingService : IRedisCachingService
+    public sealed class RedisCachingService : IRedisCachingService
     {
-        private readonly IDistributedCache _redis;
+        private readonly IDistributedCache _cache;
 
-        public RedisCachingService(IDistributedCache redis)
+        public RedisCachingService(IDistributedCache cache)
         {
-            _redis = redis;
+            _cache = cache;
         }
-        public List<int>? GetData(string key)
+
+        public async Task<IReadOnlyList<int>?> GetUsedNumbersAsync(int sessionId, CancellationToken cancellationToken = default)
         {
-            var data = _redis.GetString(key);
-            if (data is null)
+            var json = await _cache.GetStringAsync(UsedNumbersKey(sessionId), cancellationToken);
+            if (json is null)
             {
-                return default;
+                return null;
             }
 
-            return JsonSerializer.Deserialize<List<int>>(data);
+            return JsonSerializer.Deserialize<List<int>>(json);
         }
 
-        public bool IsExist(string key)
+        public async Task AddUsedNumberAsync(int sessionId, int number, TimeSpan ttl, CancellationToken cancellationToken = default)
         {
-            var data = _redis.GetString(key);
-            return data is not null;
-        }
+            var numbers = (await GetUsedNumbersAsync(sessionId, cancellationToken) ?? []).ToList();
+            numbers.Add(number);
 
-        public void RPushData(string key, int data)
-        {
-            List<int>? deserializedData = GetData(key);
-            if (deserializedData is not null)
-            {
-                deserializedData.Add(data);
-            }
-
-            SetData(key, deserializedData!);
-        }
-
-        public void SetData(string key, List<int> data)
-        {
             var options = new DistributedCacheEntryOptions
             {
-                AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(5)
+                AbsoluteExpirationRelativeToNow = ttl,
             };
-
-            _redis.SetString(key, JsonSerializer.Serialize<List<int>>(data), options);
+            var json = JsonSerializer.Serialize(numbers);
+            await _cache.SetStringAsync(UsedNumbersKey(sessionId), json, options, cancellationToken);
         }
+
+        private static string UsedNumbersKey(int sessionId) => $"session:{sessionId}:used";
     }
 }

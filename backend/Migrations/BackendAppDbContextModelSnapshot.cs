@@ -17,7 +17,7 @@ namespace backend.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "9.0.0")
+                .HasAnnotation("ProductVersion", "9.0.2")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -72,6 +72,10 @@ namespace backend.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<string>("PasswordHash")
+                        .IsRequired()
+                        .HasColumnType("text");
+
                     b.Property<int>("TotalGamesPlayed")
                         .HasColumnType("integer");
 
@@ -119,14 +123,77 @@ namespace backend.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
-                    b.Property<int>("Duration")
+                    b.Property<int>("CurrentNumber")
                         .HasColumnType("integer");
 
-                    b.Property<DateTime>("EndTime")
+                    b.Property<int>("CurrentRound")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("DurationSeconds")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("EndTimeUtc")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<int>("GameId")
                         .HasColumnType("integer");
+
+                    b.Property<DateTime>("StartTimeUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("GameId");
+
+                    b.ToTable("Sessions");
+                });
+
+            modelBuilder.Entity("backend.Models.SessionAnswer", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("AnsweredAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsCorrect")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("PlayerId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Round")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("SessionId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PlayerId");
+
+                    b.HasIndex("SessionId", "PlayerId", "Round")
+                        .IsUnique();
+
+                    b.ToTable("SessionAnswers");
+                });
+
+            modelBuilder.Entity("backend.Models.SessionParticipant", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("JoinedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<int>("PlayerId")
                         .HasColumnType("integer");
@@ -134,16 +201,17 @@ namespace backend.Migrations
                     b.Property<int>("Score")
                         .HasColumnType("integer");
 
-                    b.Property<DateTime>("StartTime")
-                        .HasColumnType("timestamp with time zone");
+                    b.Property<int>("SessionId")
+                        .HasColumnType("integer");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("GameId");
-
                     b.HasIndex("PlayerId");
 
-                    b.ToTable("Sessions");
+                    b.HasIndex("SessionId", "PlayerId")
+                        .IsUnique();
+
+                    b.ToTable("SessionParticipants");
                 });
 
             modelBuilder.Entity("backend.Models.Game", b =>
@@ -176,15 +244,45 @@ namespace backend.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.Navigation("Game");
+                });
+
+            modelBuilder.Entity("backend.Models.SessionAnswer", b =>
+                {
                     b.HasOne("backend.Models.Player", "Player")
-                        .WithMany("Sessions")
+                        .WithMany()
                         .HasForeignKey("PlayerId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("Game");
+                    b.HasOne("backend.Models.Session", "Session")
+                        .WithMany("Answers")
+                        .HasForeignKey("SessionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.Navigation("Player");
+
+                    b.Navigation("Session");
+                });
+
+            modelBuilder.Entity("backend.Models.SessionParticipant", b =>
+                {
+                    b.HasOne("backend.Models.Player", "Player")
+                        .WithMany()
+                        .HasForeignKey("PlayerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("backend.Models.Session", "Session")
+                        .WithMany("Participants")
+                        .HasForeignKey("SessionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Player");
+
+                    b.Navigation("Session");
                 });
 
             modelBuilder.Entity("backend.Models.Game", b =>
@@ -197,8 +295,13 @@ namespace backend.Migrations
             modelBuilder.Entity("backend.Models.Player", b =>
                 {
                     b.Navigation("Games");
+                });
 
-                    b.Navigation("Sessions");
+            modelBuilder.Entity("backend.Models.Session", b =>
+                {
+                    b.Navigation("Answers");
+
+                    b.Navigation("Participants");
                 });
 #pragma warning restore 612, 618
         }

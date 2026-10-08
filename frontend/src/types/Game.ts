@@ -1,13 +1,21 @@
-import GameRule from "./GameRule";
+import type GameRule from "./GameRule";
 
 interface Game {
-  id: string;
+  id: number;
   name: string;
   authorName: string;
-  rules: GameRule[];
   startRange: number;
   endRange: number;
   createdAt: string;
+  rules: GameRule[];
+}
+
+interface CreateGameRequest {
+  name: string;
+  startRange: number;
+  endRange: number;
+  rules: GameRule[];
 }
 
 export default Game;
+export type { CreateGameRequest };

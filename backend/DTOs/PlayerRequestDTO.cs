@@ -1,5 +1,33 @@
-﻿namespace backend.DTOs
+using System.ComponentModel.DataAnnotations;
+
+namespace backend.DTOs
 {
+    public class RegisterRequest
+    {
+        [Required]
+        [MinLength(1)]
+        [MaxLength(50)]
+        public required string Name { get; set; }
+
+        [Required]
+        [MinLength(8)]
+        [MaxLength(100)]
+        public required string Password { get; set; }
+    }
+
+    public class LoginRequest
+    {
+        [Required]
+        [MinLength(1)]
+        [MaxLength(50)]
+        public required string Name { get; set; }
+
+        [Required]
+        [MinLength(8)]
+        [MaxLength(100)]
+        public required string Password { get; set; }
+    }
+
     public class PlayerRequestDTO
     {
         public required string Name { get; set; }

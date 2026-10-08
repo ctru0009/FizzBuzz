@@ -1,32 +1,66 @@
 "use client";
 import { useRouter } from "next/navigation";
-import React, { useState, useEffect } from "react";
-import { BACKEND_URL } from "@/const";
+import React, { useState } from "react";
+import { ApiError, postJson } from "@/lib/api";
+import Game, { type CreateGameRequest } from "@/types/Game";
 import GameRule from "@/types/GameRule";
 
+function validateGame(
+  name: string,
+  startRange: number,
+  endRange: number,
+  rules: GameRule[],
+): string | null {
+  if (!name.trim()) {
+    return "Name is required.";
+  }
+  if (name.trim().length > 100) {
+    return "Name must be 100 characters or less.";
+  }
+  if (
+    !Number.isInteger(startRange) ||
+    !Number.isInteger(endRange) ||
+    startRange < 1 ||
+    endRange > 10000
+  ) {
+    return "Ranges must be whole numbers from 1 to 10000.";
+  }
+  if (startRange >= endRange) {
+    return "End range must be greater than start range.";
+  }
+  if (rules.length < 1 || rules.length > 10) {
+    return "Provide between 1 and 10 rules.";
+  }
+  for (const rule of rules) {
+    if (!Number.isInteger(rule.divisibleBy) || rule.divisibleBy < 1) {
+      return "Each rule divisor must be a whole number of 1 or more.";
+    }
+    if (!rule.replacementWord.trim()) {
+      return "Each rule needs a replacement word.";
+    }
+    if (rule.replacementWord.trim().length > 50) {
+      return "Replacement words must be 50 characters or less.";
+    }
+  }
+  return null;
+}
+
 const CreateGamePage = () => {
-  
   const router = useRouter();
   const [name, setName] = useState("");
-  const [authorName, setAuthorName] = useState("");
   const [startRange, setStartRange] = useState(1);
   const [endRange, setEndRange] = useState(101);
   const [error, setError] = useState("");
-  const [playerId, setPlayerId] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
   const [rules, setRules] = useState<GameRule[]>([
     { divisibleBy: 3, replacementWord: "Fizz" },
     { divisibleBy: 5, replacementWord: "Buzz" },
   ]);
 
-  useEffect(() => {
-    const player = localStorage.getItem("player");
-    if (player) {
-      const parsed = JSON.parse(player);
-      setPlayerId(parsed.id);
-    }
-  }, []);
-
   const addRule = () => {
+    if (rules.length >= 10) {
+      return;
+    }
     setRules([...rules, { divisibleBy: 0, replacementWord: "" }]);
   };
 
@@ -37,7 +71,7 @@ const CreateGamePage = () => {
   const updateRule = (
     index: number,
     field: keyof GameRule,
-    value: string | number
+    value: string | number,
   ) => {
     const newRules = [...rules];
     newRules[index] = {
@@ -49,45 +83,45 @@ const CreateGamePage = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (!name || !authorName) {
-      setError("Name and Author Name are required");
+    if (creating) {
       return;
     }
 
-    if (startRange >= endRange) {
-      setError("End range must be greater than start range");
+    const trimmedRules = rules.map((rule) => ({
+      divisibleBy: rule.divisibleBy,
+      replacementWord: rule.replacementWord.trim(),
+    }));
+    const validationError = validateGame(
+      name.trim(),
+      startRange,
+      endRange,
+      trimmedRules,
+    );
+    if (validationError) {
+      setError(validationError);
       return;
     }
 
-    if (rules.some((rule) => rule.divisibleBy <= 0 || !rule.replacementWord)) {
-      setError("All rules must have valid numbers and replacement words");
-      return;
-    }
+    const body: CreateGameRequest = {
+      name: name.trim(),
+      startRange,
+      endRange,
+      rules: trimmedRules,
+    };
 
+    setCreating(true);
     try {
-      const response = await fetch(`${BACKEND_URL}/games`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          name,
-          authorName,
-          startRange,
-          endRange,
-          rules,
-          playerId,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to create game");
-      }
-
+      await postJson<Game>("/api/games", body);
       router.push("/games");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "An error occurred");
+      if (err instanceof ApiError) {
+        setError(err.detail);
+      } else if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("Could not create the game.");
+      }
+      setCreating(false);
     }
   };
 
@@ -110,21 +144,9 @@ const CreateGamePage = () => {
             <input
               type="text"
               required
+              maxLength={100}
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="mt-1 block w-full rounded-md border border-gray-300 p-2"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700">
-              Author Name
-            </label>
-            <input
-              type="text"
-              required
-              value={authorName}
-              onChange={(e) => setAuthorName(e.target.value)}
               className="mt-1 block w-full rounded-md border border-gray-300 p-2"
             />
           </div>
@@ -138,6 +160,7 @@ const CreateGamePage = () => {
                 type="number"
                 required
                 min="1"
+                max="10000"
                 value={startRange}
                 onChange={(e) => {
                   setStartRange(Number(e.target.value));
@@ -153,7 +176,8 @@ const CreateGamePage = () => {
               <input
                 type="number"
                 required
-                min={startRange + 100}
+                min="1"
+                max="10000"
                 value={endRange}
                 onChange={(e) => {
                   setEndRange(Number(e.target.value));
@@ -173,6 +197,7 @@ const CreateGamePage = () => {
                 <input
                   type="number"
                   required
+                  min="1"
                   placeholder="Divisible by"
                   value={rule.divisibleBy}
                   onChange={(e) =>
@@ -183,6 +208,7 @@ const CreateGamePage = () => {
                 <input
                   type="text"
                   required
+                  maxLength={50}
                   placeholder="Word"
                   value={rule.replacementWord}
                   onChange={(e) =>
@@ -190,7 +216,7 @@ const CreateGamePage = () => {
                   }
                   className="w-1/2 rounded-md border border-gray-300 p-2"
                 />
-                {rules.length > 2 && (
+                {rules.length > 1 && (
                   <button
                     type="button"
                     onClick={() => deleteRule(index)}
@@ -204,7 +230,8 @@ const CreateGamePage = () => {
             <button
               type="button"
               onClick={addRule}
-              className="mt-2 text-sm text-blue-500 hover:text-blue-700"
+              disabled={rules.length >= 10}
+              className="mt-2 text-sm text-blue-500 hover:text-blue-700 disabled:opacity-50"
             >
               + Add Rule
             </button>
@@ -212,9 +239,10 @@ const CreateGamePage = () => {
 
           <button
             type="submit"
-            className="w-full bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600 transition-colors"
+            disabled={creating}
+            className="w-full bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600 transition-colors disabled:opacity-50"
           >
-            Create Game
+            {creating ? "Creating..." : "Create Game"}
           </button>
         </form>
       </div>

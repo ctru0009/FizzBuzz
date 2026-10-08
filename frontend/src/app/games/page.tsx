@@ -4,9 +4,11 @@ import isAuth from "@/components/IsAuth";
 import React from "react";
 
 const page = () => {
-  return <div>
-    <GameList />
-  </div>;
+  return (
+    <div>
+      <GameList />
+    </div>
+  );
 };
 
 export default isAuth(page);

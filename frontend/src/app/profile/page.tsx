@@ -1,11 +1,9 @@
-'use client';
-import isAuth from '@/components/IsAuth';
-import React from 'react'
+"use client";
+import isAuth from "@/components/IsAuth";
+import React from "react";
 
 const page = () => {
-  return (
-    <div>index</div>
-  )
-}
+  return <div>index</div>;
+};
 
-export default isAuth(page)
+export default isAuth(page);

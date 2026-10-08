@@ -6,9 +6,10 @@ services:
     ports:
       - "3000:3000"
     environment:
-      NEXT_PUBLIC_BASE_URL: "http://localhost:8080"
+      NEXT_PUBLIC_BASE_URL: "${NEXT_PUBLIC_BASE_URL:-http://localhost:8080}"
     depends_on:
       - backend
+    restart: unless-stopped
   backend:
     build:
       context: ./backend
@@ -16,18 +17,34 @@ services:
     ports:
       - "8080:8080"
       - "5187:5187"
-
     environment:
-      ASPNETCORE_ENVIRONMENT: "Development"
-      ConnectionStrings__DefaultConnection: "Host=db;Port=5432;Database=fizzbuzz;Username=postgres;Password=password"
+      ASPNETCORE_ENVIRONMENT: "${ASPNETCORE_ENVIRONMENT:-Development}"
+      ConnectionStrings__DefaultConnection: "Host=db;Port=5432;Database=${POSTGRES_DB:-fizzbuzz};Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in your .env file}"
+      ConnectionStrings__Redis: "redis_db:6379,abortConnect=false"
+      Jwt__Issuer: "${Jwt__Issuer:-fizzbuzz}"
+      Jwt__Audience: "${Jwt__Audience:-fizzbuzz}"
+      Jwt__SigningKey: "${Jwt__SigningKey:?Set Jwt__SigningKey in your .env file}"
+      Jwt__LifetimeHours: "${Jwt__LifetimeHours:-8}"
+      Game__NumberIntervalSeconds: "${Game__NumberIntervalSeconds:-15}"
+      Cors__AllowedOrigins__0: "${Cors__AllowedOrigins__0:-http://localhost:3000}"
     depends_on:
-      - db
-      - redis_db
+      db:
+        condition: service_healthy
+      redis_db:
+        condition: service_healthy
+    restart: unless-stopped
 
   redis_db:
     image: redis:latest
     ports:
       - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
 
   db:
     image: postgres:17
@@ -35,11 +52,18 @@ services:
     ports:
       - "5433:5432"
     environment:
-      POSTGRES_DB: fizzbuzz
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password
+      POSTGRES_DB: "${POSTGRES_DB:-fizzbuzz}"
+      POSTGRES_USER: "${POSTGRES_USER:-postgres}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in your .env file}"
     volumes:
       - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-fizzbuzz}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
 
 volumes:
   db-data:

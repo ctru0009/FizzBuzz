@@ -1,4 +1,4 @@
-﻿using backend.Models;
+using backend.Models;
 using Microsoft.EntityFrameworkCore;
 
 
@@ -14,6 +14,10 @@ namespace backend.Data
 
         public virtual required DbSet<Session> Sessions { get; set; }
 
+        public virtual required DbSet<SessionParticipant> SessionParticipants { get; set; }
+
+        public virtual required DbSet<SessionAnswer> SessionAnswers { get; set; }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             modelBuilder.Entity<Game>()
@@ -28,11 +32,33 @@ namespace backend.Data
                 .HasForeignKey(s => s.GameId)
                 .IsRequired();
 
-            modelBuilder.Entity<Session>()
-                .HasOne(s => s.Player)
-                .WithMany(p => p.Sessions)
-                .HasForeignKey(s => s.PlayerId)
-                .IsRequired();
+            modelBuilder.Entity<SessionParticipant>()
+                .HasOne(p => p.Session)
+                .WithMany(s => s.Participants)
+                .HasForeignKey(p => p.SessionId)
+                .IsRequired()
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<SessionParticipant>()
+                .HasOne(p => p.Player)
+                .WithMany()
+                .HasForeignKey(p => p.PlayerId)
+                .IsRequired()
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<SessionAnswer>()
+                .HasOne(a => a.Session)
+                .WithMany(s => s.Answers)
+                .HasForeignKey(a => a.SessionId)
+                .IsRequired()
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<SessionAnswer>()
+                .HasOne(a => a.Player)
+                .WithMany()
+                .HasForeignKey(a => a.PlayerId)
+                .IsRequired()
+                .OnDelete(DeleteBehavior.Cascade);
 
             modelBuilder.Entity<Player>()
                 .HasMany(p => p.Games)

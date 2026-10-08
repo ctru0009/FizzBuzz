@@ -1,0 +1,6 @@
+<Project>
+  <!-- Strict warnings for the guardrails phase. Default analysis ruleset on purpose, the game code is rewritten in a later phase. -->
+  <PropertyGroup>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+</Project>

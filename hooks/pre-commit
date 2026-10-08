@@ -1,0 +1,25 @@
+#!/bin/sh
+# Pre-commit guardrail checks. See hooks/README.md.
+set -u
+
+ROOT="$(git rev-parse --show-toplevel)"
+cd "$ROOT" || exit 1
+
+fail() {
+  echo "pre-commit failed: $1" >&2
+  exit 1
+}
+
+echo "pre-commit: backend dotnet format verify..."
+dotnet format backend/backend.sln --verify-no-changes --verbosity minimal || fail "dotnet format (fix: dotnet format backend/backend.sln)"
+
+echo "pre-commit: frontend lint..."
+(cd frontend && npm run lint) || fail "frontend lint (fix: npm run lint in frontend/)"
+
+echo "pre-commit: frontend format check..."
+(cd frontend && npm run format) || fail "frontend format check (fix: npm run format:write in frontend/)"
+
+echo "pre-commit: frontend typecheck..."
+(cd frontend && npm run typecheck) || fail "frontend typecheck (fix: npm run typecheck in frontend/)"
+
+echo "pre-commit: all checks passed."

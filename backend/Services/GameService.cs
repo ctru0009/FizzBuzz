@@ -1,4 +1,4 @@
-﻿using backend.Data;
+using backend.Data;
 using backend.DTOs;
 using backend.Interfaces;
 using backend.Models;
@@ -6,188 +6,152 @@ using Microsoft.EntityFrameworkCore;
 
 namespace backend.Services
 {
-    public class GameService : IGame
+    public sealed class GameService : IGame
     {
         private readonly BackendAppDbContext _context;
         private readonly ILogger<GameService> _logger;
+
         public GameService(BackendAppDbContext context, ILogger<GameService> logger)
         {
             _context = context;
             _logger = logger;
         }
 
-        public async Task<GameResponseDTO> CreateGame(GameRequestDTO game)
+        public async Task<GameResponseDTO> CreateGameAsync(GameRequestDTO game, int playerId, string authorName, CancellationToken cancellationToken = default)
         {
-            try
+            var player = await _context.Players.FirstOrDefaultAsync(p => p.Id == playerId, cancellationToken)
+                ?? throw new KeyNotFoundException("Player not found.");
+
+            var newGame = new Game
             {
-                var player = _context.Players.FirstOrDefault(p => p.Id == game.PlayerId);
-                if (player == null)
-                {
-                    throw new Exception("Player not found");
-                }
-                // Create the game
-                var newGame = new Game
-                {
-                    Name = game.Name,
-                    AuthorName = game.AuthorName,
-                    PlayerId = game.PlayerId,
-                    StartRange = game.StartRange,
-                    EndRange = game.EndRange,
-                    CreatedAt = DateTime.UtcNow
-                };
-                _context.Games.Add(newGame);
-                _context.SaveChanges();
-                var gameResponse = new GameResponseDTO
-                {
-                    Id = newGame.Id,
-                    Name = newGame.Name,
-                    AuthorName = player.Name,
-                    StartRange = newGame.StartRange,
-                    EndRange = newGame.EndRange,
-                    CreatedAt = newGame.CreatedAt,
-                    Rules = new List<RuleDTO>().ToArray()
-                };
-                // Create the rules
-                var ruleDTOs = new List<RuleDTO>();
-                foreach (var rule in game.Rules)
-                {
-                    var newRule = new Rule
-                    {
-                        GameId = newGame.Id,
-                        DivisibleBy = rule.DivisibleBy,
-                        ReplacementWord = rule.ReplacementWord
-                    };
-                    _context.Rules.Add(newRule);
-                    ruleDTOs.Add(new RuleDTO
-                    {
-                        DivisibleBy = newRule.DivisibleBy,
-                        ReplacementWord = newRule.ReplacementWord
-                    });
-                }
-                gameResponse.Rules = ruleDTOs.ToArray();
-                await _context.SaveChangesAsync();
-                return gameResponse;
-            }
-            catch (Exception e)
+                Name = game.Name,
+                AuthorName = authorName,
+                PlayerId = player.Id,
+                StartRange = game.StartRange,
+                EndRange = game.EndRange,
+                CreatedAt = DateTime.UtcNow,
+            };
+            _context.Games.Add(newGame);
+            await _context.SaveChangesAsync(cancellationToken);
+
+            var ruleDTOs = new List<RuleDTO>();
+            foreach (var rule in game.Rules)
             {
-                throw new Exception(e.Message);
+                _context.Rules.Add(new Rule
+                {
+                    GameId = newGame.Id,
+                    DivisibleBy = rule.DivisibleBy,
+                    ReplacementWord = rule.ReplacementWord,
+                });
+                ruleDTOs.Add(new RuleDTO
+                {
+                    DivisibleBy = rule.DivisibleBy,
+                    ReplacementWord = rule.ReplacementWord,
+                });
             }
+
+            await _context.SaveChangesAsync(cancellationToken);
+            _logger.LogInformation("Created game {GameId} by player {PlayerId}.", newGame.Id, player.Id);
+
+            return new GameResponseDTO
+            {
+                Id = newGame.Id,
+                Name = newGame.Name,
+                AuthorName = newGame.AuthorName,
+                StartRange = newGame.StartRange,
+                EndRange = newGame.EndRange,
+                CreatedAt = newGame.CreatedAt,
+                Rules = ruleDTOs.ToArray(),
+            };
         }
 
-        public Task<Game> DeleteGame(int id)
+        public async Task<GameResponseDTO?> GetGameAsync(int id, CancellationToken cancellationToken = default)
         {
-            throw new NotImplementedException();
-        }
-
-        public Task<Game> GetGame(int id)
-        {
-            throw new NotImplementedException();
-        }
-
-        public async Task<List<GameResponseDTO>> GetGames()
-        {
-            try
+            var game = await _context.Games.FirstOrDefaultAsync(g => g.Id == id, cancellationToken);
+            if (game is null)
             {
-                var games = await _context.Games.ToListAsync();
-                var gameResponse = new List<GameResponseDTO>();
+                return null;
+            }
 
-                foreach (var game in games)
+            var rules = await GetRuleDTOsAsync(game.Id, cancellationToken);
+            return ToResponse(game, rules);
+        }
+
+        public async Task<List<GameResponseDTO>> GetGamesAsync(CancellationToken cancellationToken = default)
+        {
+            var games = await _context.Games.OrderBy(g => g.Id).ToListAsync(cancellationToken);
+            var response = new List<GameResponseDTO>(games.Count);
+            foreach (var game in games)
+            {
+                var rules = await GetRuleDTOsAsync(game.Id, cancellationToken);
+                response.Add(ToResponse(game, rules));
+            }
+
+            return response;
+        }
+
+        public async Task<bool> UpdateGameAsync(int id, GameRequestDTO game, CancellationToken cancellationToken = default)
+        {
+            var existing = await _context.Games.FirstOrDefaultAsync(g => g.Id == id, cancellationToken);
+            if (existing is null)
+            {
+                return false;
+            }
+
+            existing.Name = game.Name;
+            existing.StartRange = game.StartRange;
+            existing.EndRange = game.EndRange;
+
+            var oldRules = await _context.Rules.Where(r => r.GameId == id).ToListAsync(cancellationToken);
+            _context.Rules.RemoveRange(oldRules);
+            foreach (var rule in game.Rules)
+            {
+                _context.Rules.Add(new Rule
                 {
-                    var rules = await _context.Rules.Where(r => r.GameId == game.Id).ToListAsync();
-                    var ruleDTOs = new List<RuleDTO>();
-                    foreach (var rule in rules)
-                    {
-                        ruleDTOs.Add(new RuleDTO
-                        {
-                            DivisibleBy = rule.DivisibleBy,
-                            ReplacementWord = rule.ReplacementWord
-                        });
-                    }
-                    var player = await _context.Players.FindAsync(game.PlayerId);
-
-                    if (player == null)
-                    {
-                        throw new Exception("Player not found");
-                    }
-
-                    gameResponse.Add(new GameResponseDTO
-                    {
-                        Id = game.Id,
-                        Name = game.Name,
-                        AuthorName = game.AuthorName,
-                        StartRange = game.StartRange,
-                        EndRange = game.EndRange,
-                        CreatedAt = game.CreatedAt,
-                        Rules = ruleDTOs.ToArray()
-                    });
-                }
-                return gameResponse;
+                    GameId = id,
+                    DivisibleBy = rule.DivisibleBy,
+                    ReplacementWord = rule.ReplacementWord,
+                });
             }
-            catch (Exception e)
-            {
-                throw new Exception(e.Message);
-            }
+
+            await _context.SaveChangesAsync(cancellationToken);
+            return true;
         }
 
-        public async Task<bool> ValidateAnswer(GameAnswerSubmit gameAnswerSubmit)
+        public async Task<bool> DeleteGameAsync(int id, CancellationToken cancellationToken = default)
         {
-            try
+            var existing = await _context.Games.FirstOrDefaultAsync(g => g.Id == id, cancellationToken);
+            if (existing is null)
             {
-                // Check answer against rules
-                var rules = await _context.Rules.Where(r => r.GameId == gameAnswerSubmit.GameId).ToListAsync();
-                rules = _context.Rules.Where(r => r.GameId == gameAnswerSubmit.GameId).ToList();
-                var isCorrect = false;
-                var answer = "";
-
-                //_logger.LogInformation("Number: " + gameAnswerSubmit.Number);
-                //_logger.LogInformation("rules: " + rules.Count.ToString());
-                //_logger.LogInformation("gameId: " + gameAnswerSubmit.GameId.ToString());
-
-
-                // Generate the answer string
-                foreach (var rule in rules)
-                {
-                    if (gameAnswerSubmit.Number % rule.DivisibleBy == 0)
-                    {
-                        answer += rule.ReplacementWord;
-                    }
-                }
-                _logger.LogInformation("Answer: " + answer);
-                // Check if the answer is correct
-                // If the answer is empty and the number is the same as the answer, then it is correct
-                isCorrect = (string.IsNullOrEmpty(answer) && gameAnswerSubmit.Answer.Equals(gameAnswerSubmit.Number.ToString())) ||
-                            answer.Equals(gameAnswerSubmit.Answer, StringComparison.OrdinalIgnoreCase);
-
-
-                return isCorrect;
+                return false;
             }
-            catch (Exception e)
-            {
-                throw new Exception(e.Message);
-            }
+
+            _context.Games.Remove(existing);
+            await _context.SaveChangesAsync(cancellationToken);
+            return true;
         }
 
-        public int GenerateRandomNumber(int sessionId, int[] usedNumbers, int startRange, int endRange)
+        private async Task<RuleDTO[]> GetRuleDTOsAsync(int gameId, CancellationToken cancellationToken)
         {
-            try
-            {
-                var random = new Random(sessionId);
-                int nextNumber = 0;
-                do
-                {
-                    nextNumber = random.Next(startRange, endRange);
-                } while (usedNumbers.Contains(nextNumber));
-                return nextNumber;
-            }
-            catch (Exception e)
-            {
-                throw new Exception(e.Message);
-            }
+            return await _context.Rules
+                .Where(r => r.GameId == gameId)
+                .OrderBy(r => r.Id)
+                .Select(r => new RuleDTO { DivisibleBy = r.DivisibleBy, ReplacementWord = r.ReplacementWord })
+                .ToArrayAsync(cancellationToken);
         }
 
-        public Task<Game> UpdateGame(Game game)
+        private static GameResponseDTO ToResponse(Game game, RuleDTO[] rules)
         {
-            throw new NotImplementedException();
+            return new GameResponseDTO
+            {
+                Id = game.Id,
+                Name = game.Name,
+                AuthorName = game.AuthorName,
+                StartRange = game.StartRange,
+                EndRange = game.EndRange,
+                CreatedAt = game.CreatedAt,
+                Rules = rules,
+            };
         }
     }
 }

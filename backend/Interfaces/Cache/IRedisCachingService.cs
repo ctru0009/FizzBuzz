@@ -1,13 +1,10 @@
-﻿namespace backend.Interfaces.Cache
+namespace backend.Interfaces.Cache
 {
     public interface IRedisCachingService
     {
-        public List<int>? GetData(string key);
+        // Per session used numbers at key session:{id}:used, JSON int list.
+        Task<IReadOnlyList<int>?> GetUsedNumbersAsync(int sessionId, CancellationToken cancellationToken = default);
 
-        public void SetData(string key, List<int> data);
-
-        public void RPushData(string key, int data);
-
-        public bool IsExist(string key);
+        Task AddUsedNumberAsync(int sessionId, int number, TimeSpan ttl, CancellationToken cancellationToken = default);
     }
 }

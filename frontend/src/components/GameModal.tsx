@@ -1,6 +1,7 @@
 "use client";
-import { BACKEND_URL } from "@/const";
+import { ApiError, postJson } from "@/lib/api";
 import Game from "@/types/Game";
+import type SessionSnapshot from "@/types/Session";
 import { useRouter } from "next/navigation";
 import React, { useState } from "react";
 
@@ -11,35 +12,44 @@ interface GameModalProps {
 }
 
 const GameModal: React.FC<GameModalProps> = ({ isOpen, onClose, game }) => {
-  const [duration, setDuration] = useState(60);
+  const [durationSeconds, setDurationSeconds] = useState(60);
+  const [error, setError] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
   const router = useRouter();
+
   if (!isOpen) return null;
-  const onPlay = () => {
-    onClose();
-    const gameId = game.id;
-    const player = localStorage.getItem("player");
-    if (!player) {
-      router.push("/");
+
+  const onPlay = async () => {
+    if (creating) {
       return;
     }
-    const playerId = JSON.parse(player).id;
-
-    // Create a new game session
-    fetch(`${BACKEND_URL}/Sessions`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        gameId,
-        playerId,
-        duration: duration,
-      }),
-    })
-      .then((response) => response.json())
-      .then((data) => {
-        router.push(`/play/${data.id}`);
+    if (
+      !Number.isInteger(durationSeconds) ||
+      durationSeconds < 30 ||
+      durationSeconds > 1800
+    ) {
+      setError("Duration must be a whole number from 30 to 1800 seconds.");
+      return;
+    }
+    setError(null);
+    setCreating(true);
+    try {
+      const session = await postJson<SessionSnapshot>("/api/sessions", {
+        gameId: game.id,
+        durationSeconds,
       });
+      onClose();
+      router.push(`/play/${session.id}`);
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setError(err.detail);
+      } else if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("Could not create the session.");
+      }
+      setCreating(false);
+    }
   };
 
   return (
@@ -68,19 +78,34 @@ const GameModal: React.FC<GameModalProps> = ({ isOpen, onClose, game }) => {
             </li>
             <li>Otherwise, say the number</li>
           </ul>
+          <label
+            htmlFor="session-duration"
+            className="block text-sm font-medium text-gray-700 mt-4"
+          >
+            Session duration in seconds (30 to 1800)
+          </label>
           <input
+            id="session-duration"
             type="number"
-            value={duration}
-            onChange={(e) => setDuration(parseInt(e.target.value))}
-            className="border border-gray-300 rounded p-2 w-full mt-4"
+            min={30}
+            max={1800}
+            value={durationSeconds}
+            onChange={(e) => setDurationSeconds(Number(e.target.value))}
+            className="border border-gray-300 rounded p-2 w-full mt-1"
           />
+          {error && (
+            <p className="mt-2 text-sm text-red-600" role="alert">
+              {error}
+            </p>
+          )}
         </div>
         <div className="flex justify-between flex-col sm:flex-row">
           <button
             onClick={onPlay}
-            className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 mb-2 sm:mb-0 sm:mr-2"
+            disabled={creating}
+            className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 mb-2 sm:mb-0 sm:mr-2 disabled:opacity-50"
           >
-            Play
+            {creating ? "Starting..." : "Play"}
           </button>
           <button
             onClick={onClose}

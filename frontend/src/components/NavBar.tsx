@@ -1,15 +1,14 @@
 "use client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import React, { useState } from "react";
+import { AuthProvider, useAuth } from "@/lib/auth";
 
-const NavBar = () => {
-  const [isLogin, setIsLogin] = useState(false);
+function NavBarContent() {
   const router = useRouter();
+  const { player, loading, logout } = useAuth();
 
-  const handleLogout = () => {
-    localStorage.removeItem("playerName");
-    setIsLogin(false); 
+  const handleLogout = async () => {
+    await logout();
     router.push("/");
   };
 
@@ -18,10 +17,28 @@ const NavBar = () => {
       <div className="flex-grow font-bold text-2xl mx-10">
         <Link href="/">FizzBuzz Game</Link>
       </div>
-      {isLogin && (<button onClick={handleLogout} className="ml-4">
-        Logout
-      </button>)}
+      {!loading && player && (
+        <span className="mr-4 text-sm">Signed in as {player.name}</span>
+      )}
+      {!loading && player && (
+        <button onClick={handleLogout} className="ml-4 mr-10">
+          Logout
+        </button>
+      )}
+      {!loading && !player && (
+        <Link href="/" className="ml-4 mr-10">
+          Login
+        </Link>
+      )}
     </div>
+  );
+}
+
+const NavBar = () => {
+  return (
+    <AuthProvider>
+      <NavBarContent />
+    </AuthProvider>
   );
 };
 

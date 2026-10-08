@@ -1,7 +1,8 @@
-﻿using backend.Data;
+using backend.Data;
 using backend.DTOs;
 using backend.Interfaces;
 using backend.Models;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
 namespace backend.Services
@@ -9,64 +10,76 @@ namespace backend.Services
     public class PlayerService : IPlayer
     {
         private readonly BackendAppDbContext _context;
+        private readonly IPasswordHasher<Player> _passwordHasher;
 
-        public PlayerService(BackendAppDbContext context)
+        public PlayerService(BackendAppDbContext context, IPasswordHasher<Player> passwordHasher)
         {
             _context = context;
+            _passwordHasher = passwordHasher;
         }
 
-        public async Task<Player> CreatePlayer(PlayerRequestDTO player)
+        public async Task<Player> RegisterAsync(RegisterRequest request, CancellationToken cancellationToken = default)
         {
-            var newPlayer = new Player
+            var existing = await _context.Players
+                .AsNoTracking()
+                .FirstOrDefaultAsync(p => p.Name == request.Name, cancellationToken);
+            if (existing is not null)
             {
-                Name = player.Name,
+                throw new DuplicatePlayerNameException(request.Name);
+            }
+
+            var player = new Player
+            {
+                Name = request.Name,
+                PasswordHash = string.Empty,
                 CreatedAt = DateTime.UtcNow,
                 TotalScores = 0,
-                TotalGamesPlayed = 0
+                TotalGamesPlayed = 0,
             };
+            player.PasswordHash = _passwordHasher.HashPassword(player, request.Password);
+
             try
             {
-                await _context.Players.AddAsync(newPlayer);
-                await _context.SaveChangesAsync();
-                return newPlayer;
+                await _context.Players.AddAsync(player, cancellationToken);
+                await _context.SaveChangesAsync(cancellationToken);
             }
-            catch (Exception e)
+            catch (DbUpdateException exception) when (IsUniqueViolation(exception, request.Name))
             {
-                throw new Exception(e.Message);
+                throw new DuplicatePlayerNameException(request.Name);
             }
-        }
 
-        public async Task<Player?> GetPlayer(int id)
-        {
-            try
-            {
-                var player = await _context.Players.FindAsync(id);
-                return player ?? throw new Exception("Player not found");
-            }
-            catch (Exception e)
-            {
-                throw new Exception(e.Message);
-            }
-        }
-
-        public async Task<Player?> GetPlayerByName(string name)
-        {
-            var player = await _context.Players.FirstOrDefaultAsync(p => p.Name == name);
             return player;
         }
 
-        public async Task<Player> UpdatePlayer(Player player)
+        public async Task<Player?> ValidateCredentialsAsync(LoginRequest request, CancellationToken cancellationToken = default)
         {
-            try
+            var player = await GetByNameAsync(request.Name, cancellationToken);
+            if (player is null)
             {
-                _context.Players.Update(player);
-                await _context.SaveChangesAsync();
-                return player;
+                return null;
             }
-            catch (Exception e)
-            {
-                throw new Exception(e.Message);
-            }
+
+            var result = _passwordHasher.VerifyHashedPassword(player, player.PasswordHash, request.Password);
+            return result == PasswordVerificationResult.Success ? player : null;
+        }
+
+        public async Task<Player?> GetByIdAsync(int id, CancellationToken cancellationToken = default)
+        {
+            return await _context.Players.FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
+        }
+
+        public async Task<Player?> GetByNameAsync(string name, CancellationToken cancellationToken = default)
+        {
+            return await _context.Players.FirstOrDefaultAsync(p => p.Name == name, cancellationToken);
+        }
+
+        private static bool IsUniqueViolation(DbUpdateException exception, string name)
+        {
+            var text = exception.ToString();
+            return text.Contains("IX_Players_Name", StringComparison.OrdinalIgnoreCase)
+                || text.Contains("duplicate", StringComparison.OrdinalIgnoreCase)
+                || text.Contains("unique", StringComparison.OrdinalIgnoreCase)
+                || text.Contains($"'{name}'", StringComparison.Ordinal);
         }
     }
 }

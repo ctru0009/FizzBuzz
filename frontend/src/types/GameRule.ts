@@ -1,7 +1,6 @@
-
 interface GameRule {
-    divisibleBy: number;
-    replacementWord: string;
-  }
+  divisibleBy: number;
+  replacementWord: string;
+}
 
 export default GameRule;

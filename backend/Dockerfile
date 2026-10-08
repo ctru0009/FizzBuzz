@@ -27,4 +27,5 @@ RUN dotnet publish "./backend.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p
 FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 CMD wget --no-verbose --tries=1 --spider http://localhost:8080/health/live || exit 1
 ENTRYPOINT ["dotnet", "backend.dll"]

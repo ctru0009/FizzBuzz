@@ -1,4 +1,7 @@
-﻿using backend.DTOs;
+using backend.Auth;
+using backend.DTOs;
+using backend.Gameplay;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace backend.Controllers
@@ -7,58 +10,57 @@ namespace backend.Controllers
     [ApiController]
     public class SessionsController : ControllerBase
     {
-        private readonly Interfaces.ISession _sessionService;
+        private readonly IGameSessionStore _store;
 
-        public SessionsController(Interfaces.ISession sessionService)
+        public SessionsController(IGameSessionStore store)
         {
-            _sessionService = sessionService;
+            _store = store;
         }
 
-        // POST api/sessions/
+        // POST api/sessions
         [HttpPost]
-        public async Task<IActionResult> Post([FromBody] SessionCreateRequestDTO sessionDTO)
+        [Authorize]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Post([FromBody] SessionCreateRequest request, CancellationToken cancellationToken)
         {
+            var playerId = User.GetPlayerId();
+            if (playerId is null)
+            {
+                return Unauthorized(new { error = "Missing player identity." });
+            }
+
             try
             {
-                var session = await _sessionService.CreateSession(sessionDTO);
-                return Ok(session);
+                var snapshot = await _store.CreateSessionAsync(request.GameId, playerId.Value, request.DurationSeconds, cancellationToken);
+                return Created($"/api/sessions/{snapshot.Id}", snapshot);
             }
-            catch (Exception e)
+            catch (KeyNotFoundException e)
             {
-                return BadRequest(e.Message);
+                return NotFound(new { error = e.Message });
             }
+        }
+
+        // GET api/sessions/open
+        [HttpGet("open")]
+        [AllowAnonymous]
+        public async Task<IActionResult> GetOpen(CancellationToken cancellationToken)
+        {
+            var open = await _store.ListOpenSessionsAsync(cancellationToken);
+            return Ok(open);
         }
 
         // GET api/sessions/{id}
-        [HttpGet("{id}")]
-        public async Task<IActionResult> Get(int id)
+        [HttpGet("{id:int}")]
+        [Authorize]
+        public async Task<IActionResult> Get(int id, CancellationToken cancellationToken)
         {
-            try
+            var snapshot = await _store.GetSnapshotAsync(id, cancellationToken);
+            if (snapshot is null)
             {
-                var session = await _sessionService.GetSession(id);
-                return Ok(session);
+                return NotFound(new { error = "Session not found." });
             }
-            catch (Exception e)
-            {
-                return BadRequest(e.Message);
-            }
-        }
 
-        // PUT api/sessions/id
-        [HttpPut("{id}")]
-        public async Task<IActionResult> Put(int id, [FromBody] SessionUpdateRequestDTO sessionDTO)
-        {
-            try
-            {
-                sessionDTO.SessionId = id;
-                var session = await _sessionService.UpdateSession(sessionDTO);
-                return Ok(session);
-            }
-            catch (Exception e)
-            {
-                return BadRequest(e.Message);
-            }
+            return Ok(snapshot);
         }
-
     }
 }

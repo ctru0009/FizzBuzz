@@ -1,31 +1,46 @@
-'use client';
+"use client";
 
-import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
-import { ComponentType, FC } from "react";
+import { useRouter, usePathname } from "next/navigation";
+import { useEffect } from "react";
+import type { ComponentType, FC } from "react";
+import { AuthProvider, useAuth } from "@/lib/auth";
 
-export default function isAuth<P extends object>(Component: ComponentType<P>): FC<P> {
+function AuthGate<P extends object>({
+  Component,
+  props,
+}: {
+  Component: ComponentType<P>;
+  props: P;
+}) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const { player, loading } = useAuth();
+
+  useEffect(() => {
+    if (!loading && !player) {
+      router.push(`/?returnUrl=${encodeURIComponent(pathname)}`);
+    }
+  }, [loading, player, pathname, router]);
+
+  if (loading) {
+    return <div className="p-4">Checking sign in...</div>;
+  }
+
+  if (!player) {
+    return null;
+  }
+
+  return <Component {...props} />;
+}
+
+export default function isAuth<P extends object>(
+  Component: ComponentType<P>,
+): FC<P> {
   return function IsAuth(props: P) {
-    const router = useRouter();
-    const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null);
-
-    useEffect(() => {
-      const playerName = localStorage.getItem("playerName");
-      setIsAuthorized(!!playerName);
-      
-      if (!playerName) {
-        router.push('/');
-      }
-    }, [router]);
-
-    if (isAuthorized === null) {
-      return null; // Initial loading state
-    }
-
-    if (!isAuthorized) {
-      return null;
-    }
-
-    return <Component {...props} />;
+    return (
+      <AuthProvider>
+        <AuthGate Component={Component} props={props} />
+      </AuthProvider>
+    );
   };
 }

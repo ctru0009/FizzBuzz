@@ -1,36 +1,24 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# FizzBuzz frontend
 
-## Getting Started
+Next.js client for the FizzBuzz multiplayer game. It renders the lobby, the live session view, and the session leaderboard, and talks to the ASP.NET backend over REST and SignalR.
 
-First, run the development server:
+## Commands
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+Run these from `frontend/`:
+
+```sh
+npm run dev        # start the dev server on http://localhost:3000
+npm run build      # production build
+npm run typecheck  # tsc --noEmit
+npm run lint       # ESLint
+npm run format      # prettier check
+npm run format:write  # apply formatting
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Environment
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+`NEXT_PUBLIC_BASE_URL` points the client at the backend (default `http://localhost:8080` in `docker-compose.yml`). See the root `.env.example` for local values.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Guardrails
 
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Commits run the checks in `hooks/README.md` via `core.hooksPath`. Binding project decisions live in `docs/DECISIONS.md`.

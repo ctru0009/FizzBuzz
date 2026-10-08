@@ -1,15 +1,33 @@
-﻿namespace backend.DTOs
+using System.ComponentModel.DataAnnotations;
+
+namespace backend.DTOs
 {
-    public class GameRequestDTO
+    public class GameRequestDTO : IValidatableObject
     {
+        [Required]
+        [MaxLength(100)]
         public required string Name { get; set; }
 
-        public int PlayerId { get; set; }
-        public required string AuthorName { get; set; }
+        [Range(1, 10000)]
         public int StartRange { get; set; }
+
+        [Range(1, 10000)]
         public int EndRange { get; set; }
 
+        [Required]
+        [MinLength(1)]
+        [MaxLength(10)]
         public required RuleDTO[] Rules { get; set; }
+
+        public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+        {
+            if (StartRange >= EndRange)
+            {
+                yield return new ValidationResult(
+                    "StartRange must be less than EndRange.",
+                    [nameof(StartRange), nameof(EndRange)]);
+            }
+        }
     }
 
     public class GameResponseDTO
@@ -21,24 +39,5 @@
         public int EndRange { get; set; }
         public DateTime CreatedAt { get; set; }
         public required RuleDTO[] Rules { get; set; }
-    }
-
-    public class GameAnswerResponse
-    {
-        public bool IsCorrect { get; set; }
-        public int NextNumber { get; set; }
-        public int Score { get; set; }
-
-    }
-
-    public class GameAnswerSubmit
-    {
-        public int SessionId { get; set; }
-        public int GameId { get; set; }
-        public int Number { get; set; }
-        public int StartRange { get; set; }
-        public int EndRange { get; set; }
-        public required string Answer { get; set; }
-        public int Score { get; set; }
     }
 }
