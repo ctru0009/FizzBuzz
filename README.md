@@ -82,7 +82,7 @@ All config comes from environment. See .env.example for every key.
 
 ## Testing
 
-Backend, 82 tests (61 unit, 21 integration on real Postgres and Redis via Testcontainers, needs Docker):
+Backend, 85 tests (64 unit, 21 integration on real Postgres and Redis via Testcontainers, needs Docker):
 
 ```bash
 dotnet test backend/backend.sln --configuration Release
@@ -114,7 +114,7 @@ Auth is a JWT in an HttpOnly cookie plus antiforgery tokens on mutations. Full s
 | GET | /api/sessions/{id} | cookie | Session snapshot |
 | GET | /health/live, /health/ready | no | Health checks |
 
-SignalR hub at /sessionHub: JoinSession, SubmitAnswer, LeaveSession. Server broadcasts NumberAdvanced, ScoresUpdated, SessionEnded.
+SignalR hub at /sessionHub: JoinSession, SubmitAnswer, LeaveSession. Server broadcasts NumberAdvanced, ScoresUpdated, SessionEnded. The hub rejects bad input (empty or overlong answers), missing identity, non-members, stale rounds, and duplicate submits, all covered by unit and integration tests.
 
 ## Project structure
 

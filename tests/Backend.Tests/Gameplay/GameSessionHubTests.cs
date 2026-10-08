@@ -131,6 +131,49 @@ public sealed class GameSessionHubTests : IDisposable
         var ex = await Assert.ThrowsAsync<HubException>(() => hub.SubmitAnswer(snapshot.Id, 1, "Fizz"));
         Assert.Equal("Already answered this round.", ex.Message);
     }
+    [Fact]
+    public async Task SubmitAnswer_Empty_ThrowsExactMessage()
+    {
+        var ann = await _fx.AddPlayerAsync("Ann");
+        var game = await _fx.AddGameAsync(ann.Id, ann.Name, 1, 100, (3, "Fizz"));
+        var snapshot = await _fx.Store.CreateSessionAsync(game.Id, ann.Id, 300);
+
+        var hub = CreateHub(ann.Id);
+        var ex = await Assert.ThrowsAsync<HubException>(() => hub.SubmitAnswer(snapshot.Id, 1, "   "));
+        Assert.Equal("Answer is required.", ex.Message);
+    }
+
+    [Fact]
+    public async Task SubmitAnswer_Overlong_ThrowsExactMessage()
+    {
+        var ann = await _fx.AddPlayerAsync("Ann");
+        var game = await _fx.AddGameAsync(ann.Id, ann.Name, 1, 100, (3, "Fizz"));
+        var snapshot = await _fx.Store.CreateSessionAsync(game.Id, ann.Id, 300);
+
+        var hub = CreateHub(ann.Id);
+        var ex = await Assert.ThrowsAsync<HubException>(() => hub.SubmitAnswer(snapshot.Id, 1, new string('x', 101)));
+        Assert.Equal("Answer must be at most 100 characters.", ex.Message);
+    }
+
+    [Fact]
+    public async Task SubmitAnswer_MissingIdentity_ThrowsExactMessage()
+    {
+        var ann = await _fx.AddPlayerAsync("Ann");
+        var game = await _fx.AddGameAsync(ann.Id, ann.Name, 1, 100, (3, "Fizz"));
+        var snapshot = await _fx.Store.CreateSessionAsync(game.Id, ann.Id, 300);
+
+        var hub = new GameSessionHub(_fx.Store, _fx.Rules, NullLogger<GameSessionHub>.Instance);
+        var context = new Mock<HubCallerContext>();
+        context.SetupGet(c => c.User).Returns(new ClaimsPrincipal(new ClaimsIdentity()));
+        context.SetupGet(c => c.ConnectionId).Returns("conn-anon");
+        hub.Context = context.Object;
+        hub.Clients = new Mock<IHubCallerClients>().Object;
+        hub.Groups = new Mock<IGroupManager>().Object;
+
+        var ex = await Assert.ThrowsAsync<HubException>(() => hub.SubmitAnswer(snapshot.Id, 1, "Fizz"));
+        Assert.Equal("Missing player identity.", ex.Message);
+    }
+
 
     [Fact]
     public async Task SubmitAnswer_Finished_ThrowsExactMessage()

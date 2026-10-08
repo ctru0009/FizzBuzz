@@ -4,7 +4,7 @@
 
 | Suite | Command | Count | Notes |
 |---|---|---|---|
-| Backend unit | `dotnet test backend/backend.sln --filter "Category!=Integration"` | 61 | xUnit, EF InMemory, fakes. No Docker needed. |
+| Backend unit | `dotnet test backend/backend.sln --filter "Category!=Integration"` | 64 | xUnit, EF InMemory, fakes. No Docker needed. |
 | Backend integration | `dotnet test backend/backend.sln --filter "Category=Integration"` | 21 | Testcontainers Postgres + Redis. Needs Docker. |
 | Frontend | `cd frontend && npm run test:run` | 32 | Vitest + Testing Library, fetch and SignalR mocked. |
 
