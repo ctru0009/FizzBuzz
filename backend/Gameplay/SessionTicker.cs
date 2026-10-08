@@ -109,7 +109,7 @@ namespace backend.Gameplay
 
             var ttl = state.EndTimeUtc - now + RedisGracePeriod;
             await redis.AddUsedNumberAsync(state.SessionId, number, ttl, cancellationToken);
-            var advancesAtUtc = DateTime.UtcNow + _interval;
+            var advancesAtUtc = now + _interval;
             await _hub.Clients.Group(SessionGroups.Name(state.SessionId))
                 .SendAsync(HubMessages.NumberAdvanced, new NumberAdvancedPayload(advanced.Number, advanced.Round, advanced.EndsAtUtc, advancesAtUtc), cancellationToken);
         }
