@@ -1,7 +1,9 @@
 {
-  "name": "frontend",
+  "name": "fizzbuzz-frontend",
   "version": "0.1.0",
   "private": true,
+  "description": "Next.js client for the FizzBuzz multiplayer game",
+  "license": "MIT",
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build",

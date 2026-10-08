@@ -13,6 +13,7 @@ npm run typecheck  # tsc --noEmit
 npm run lint       # ESLint
 npm run format      # prettier check
 npm run format:write  # apply formatting
+npm run test:run    # Vitest suite, single run
 ```
 
 ## Environment
